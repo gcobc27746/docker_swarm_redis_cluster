@@ -1,0 +1,84 @@
+version: '3.8'
+
+networks:
+  redis-net:
+    external: true
+
+services:
+  redis-master:
+    image: 'bitnami/redis:latest'
+    networks:
+      - redis-net
+    ports:
+      - target: 6379
+        published: 6379
+        protocol: tcp
+        mode: host
+    environment:
+      - REDIS_REPLICATION_MODE=master
+      - REDIS_PASSWORD=root123
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.labels.zone == fs
+          - node.labels.redis-master == true
+
+  redis-slave:
+    image: 'bitnami/redis:latest'
+    networks:
+      - redis-net
+    ports:
+      - target: 6379
+        published: 6379
+        protocol: tcp
+        mode: host
+    depends_on:
+      - redis-master
+    environment:
+      - REDIS_REPLICATION_MODE=slave
+      - REDIS_MASTER_HOST=redis-master
+      - REDIS_MASTER_PASSWORD=root123
+      - REDIS_PASSWORD=root123
+    deploy:
+      mode: global
+      replicas: 2
+      placement:
+        constraints:
+          - node.labels.zone == fs
+          - node.labels.redis-master != true
+
+  redis-sentinel:
+    image: 'bitnami/redis-sentinel:latest'
+    networks:
+      - redis-net
+    ports:
+      - target: 26379
+        published: 26379
+        protocol: tcp
+        mode: host
+    depends_on:
+      - redis-master
+    environment:
+      - REDIS_MASTER_HOST=redis-master
+      - REDIS_MASTER_PASSWORD=root123
+    deploy:
+      mode: global
+      replicas: 3
+      placement:
+#        max_replicas_per_node: 1
+        constraints:
+          - node.labels.zone == fs
+
+  portainer:
+    image: portainer/portainer
+    command: -H unix:///var/run/docker.sock
+    ports:
+      - "9000:9000"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      - "/tmp:/data"
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager
