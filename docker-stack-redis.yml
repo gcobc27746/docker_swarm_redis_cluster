@@ -41,9 +41,9 @@ services:
       - REDIS_MASTER_PASSWORD=root123
       - REDIS_PASSWORD=root123
     deploy:
-      mode: global
       replicas: 2
       placement:
+        max_replicas_per_node: 1
         constraints:
           - node.labels.zone == fs
           - node.labels.redis-master != true
@@ -63,10 +63,9 @@ services:
       - REDIS_MASTER_HOST=redis-master
       - REDIS_MASTER_PASSWORD=root123
     deploy:
-      mode: global
       replicas: 3
       placement:
-#        max_replicas_per_node: 1
+        max_replicas_per_node: 1
         constraints:
           - node.labels.zone == fs
 
